@@ -1527,6 +1527,40 @@
         navigateTo('home');
       };
       
+      // Debug function for Telegram Mini App
+      window.debugTelegramApp = function() {
+        console.log('=== TELEGRAM MINI APP DEBUG ===');
+        console.log('Telegram WebApp available:', !!window.Telegram?.WebApp);
+        if (window.Telegram?.WebApp) {
+          console.log('Telegram WebApp data:', {
+            initData: window.Telegram.WebApp.initData,
+            initDataUnsafe: window.Telegram.WebApp.initDataUnsafe,
+            version: window.Telegram.WebApp.version,
+            platform: window.Telegram.WebApp.platform,
+            colorScheme: window.Telegram.WebApp.colorScheme,
+            themeParams: window.Telegram.WebApp.themeParams
+          });
+        }
+        console.log('Current user data:', currentUser);
+        console.log('Device ID:', localStorage.getItem('galaxyEarnDeviceId'));
+        console.log('All users in localStorage:', JSON.parse(localStorage.getItem('galaxyEarnAllUsers') || '{}'));
+      };
+      
+      // Test API connection
+      window.testAPIConnection = async function() {
+        console.log('=== TESTING API CONNECTION ===');
+        try {
+          const response = await fetch('/api/get-users');
+          console.log('API Response status:', response.status);
+          const data = await response.json();
+          console.log('API Response data:', data);
+          return data;
+        } catch (error) {
+          console.error('API Connection failed:', error);
+          return null;
+        }
+      };
+      
       // Add function to force update stats display
       window.forceUpdateStats = function() {
         console.log('Force updating stats display');
@@ -2261,8 +2295,22 @@ Referral From:
     async function saveUserState() {
       const deviceId = localStorage.getItem('galaxyEarnDeviceId');
       
+      // Debug: Log environment info
+      console.log('=== SAVE USER STATE DEBUG ===');
+      console.log('Environment:', {
+        userAgent: navigator.userAgent,
+        isTelegram: window.Telegram?.WebApp ? 'Yes' : 'No',
+        currentURL: window.location.href,
+        deviceId: deviceId,
+        currentUser: currentUser
+      });
+      
       try {
-        const response = await fetch('/api/save-user', {
+        console.log('Attempting to save to API...');
+        const apiUrl = '/api/save-user';
+        console.log('API URL:', apiUrl);
+        
+        const response = await fetch(apiUrl, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -2273,25 +2321,35 @@ Referral From:
           })
         });
 
+        console.log('API Response status:', response.status);
+        console.log('API Response headers:', Object.fromEntries(response.headers.entries()));
+
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
 
         const result = await response.json();
-        console.log('User data saved to API:', result);
+        console.log('✅ User data saved to API successfully:', result);
         
         // Also save to localStorage as backup
         let allUsersData = JSON.parse(localStorage.getItem('galaxyEarnAllUsers')) || {};
         allUsersData[deviceId] = currentUser;
         localStorage.setItem('galaxyEarnAllUsers', JSON.stringify(allUsersData));
+        console.log('✅ User data also saved to localStorage');
         
       } catch (error) {
-        console.error('Failed to save user data to API:', error);
+        console.error('❌ Failed to save user data to API:', error);
+        console.error('Error details:', {
+          message: error.message,
+          stack: error.stack,
+          name: error.name
+        });
         
         // Fallback to localStorage only
         let allUsersData = JSON.parse(localStorage.getItem('galaxyEarnAllUsers')) || {};
         allUsersData[deviceId] = currentUser;
         localStorage.setItem('galaxyEarnAllUsers', JSON.stringify(allUsersData));
+        console.log('✅ Fallback: User data saved to localStorage only');
       }
     }
   </script>
