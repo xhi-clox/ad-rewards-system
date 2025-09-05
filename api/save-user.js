@@ -1,6 +1,5 @@
 // Vercel Serverless Function for saving user data
-const fs = require('fs');
-const path = require('path');
+const storage = require('./storage');
 
 module.exports = async (req, res) => {
   // Enable CORS
@@ -29,51 +28,16 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: 'Missing deviceId or userData' });
     }
 
-    // Path to the JSON file
-    const filePath = path.join(process.cwd(), 'data', 'users.json');
-    console.log('Saving to file:', filePath);
-    
-    // Ensure data directory exists
-    const dataDir = path.dirname(filePath);
-    if (!fs.existsSync(dataDir)) {
-      console.log('Creating data directory:', dataDir);
-      fs.mkdirSync(dataDir, { recursive: true });
-    }
-
-    // Read existing data or create empty object
-    let allUsers = {};
-    if (fs.existsSync(filePath)) {
-      try {
-        const fileContent = fs.readFileSync(filePath, 'utf8');
-        allUsers = JSON.parse(fileContent);
-        console.log('Loaded existing users:', Object.keys(allUsers).length);
-      } catch (error) {
-        console.error('Error reading users file:', error);
-        allUsers = {};
-      }
-    } else {
-      console.log('Users file does not exist, creating new one');
-    }
-
-    // Update or add user data
-    allUsers[deviceId] = {
-      ...userData,
-      lastUpdated: new Date().toISOString(),
-      deviceId: deviceId
-    };
-
-    // Save back to file
-    fs.writeFileSync(filePath, JSON.stringify(allUsers, null, 2));
-    console.log('File saved successfully');
-
-    // Log the update
-    console.log(`User data saved for device: ${deviceId}`);
+    // Save user data using shared storage
+    const savedUser = storage.saveUser(deviceId, userData);
+    const stats = storage.getStats();
 
     return res.status(200).json({ 
       success: true, 
       message: 'User data saved successfully',
       deviceId: deviceId,
-      totalUsers: Object.keys(allUsers).length
+      totalUsers: stats.totalUsers,
+      user: savedUser
     });
 
   } catch (error) {
