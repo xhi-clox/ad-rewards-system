@@ -1608,11 +1608,18 @@
         loadLocalData();
         return;
       }
+
+      // API base configuration for admin panel
+      const STORED_API_BASE = localStorage.getItem('API_BASE') || '';
+      const DEFAULT_PROJECT_URL = '';
+      const SHOULD_USE_PROJECT_URL = location.host.endsWith('t.me') || location.protocol === 'file:';
+      const API_BASE = (SHOULD_USE_PROJECT_URL ? (STORED_API_BASE || DEFAULT_PROJECT_URL) : location.origin) || location.origin;
+      window.setApiBase = function(url){ try { localStorage.setItem('API_BASE', url); console.log('API_BASE set to', url); } catch(e) {} };
       
       try {
         // Load users data from API
         console.log('Fetching from /api/get-users...');
-        const response = await fetch('/api/get-users');
+        const response = await fetch(`${API_BASE}/api/get-users`);
         console.log('API Response status:', response.status);
         
         if (!response.ok) {
@@ -1777,7 +1784,7 @@
         
         // Save each test user via API
         for (const testUser of testUsers) {
-          const response = await fetch('/api/save-user', {
+          const response = await fetch(`${API_BASE}/api/save-user`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -2091,7 +2098,7 @@
     async function viewUserDetails(userId) {
       try {
         // Try to get user from API first
-        const response = await fetch('/api/get-users');
+        const response = await fetch(`${API_BASE}/api/get-users`);
         if (response.ok) {
           const data = await response.json();
           const allUsersData = data.users || {};
