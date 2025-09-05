@@ -1598,17 +1598,25 @@
 
     // Load admin data from API
     async function loadAdminData() {
+      console.log('Loading admin data...');
+      
       try {
         // Load users data from API
+        console.log('Fetching from /api/get-users...');
         const response = await fetch('/api/get-users');
+        console.log('API Response status:', response.status);
+        
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
+        
         const data = await response.json();
+        console.log('API Response data:', data);
+        
         const allUsersData = data.users || {};
         const users = Object.values(allUsersData);
         
-        console.log('Loaded users from API:', users.length);
+        console.log('Loaded users from API:', users.length, users);
         
         // Load withdrawal requests (still from localStorage for now)
         const withdrawalRequests = JSON.parse(localStorage.getItem('galaxyEarnWithdrawalRequests')) || [];
@@ -1620,15 +1628,18 @@
         updateUsersTable(users);
         updateWithdrawalsTable(withdrawalRequests);
         
+        showToast(`Loaded ${users.length} users from API`, 'success');
+        
       } catch (error) {
         console.error('Failed to load data from API:', error);
+        showToast(`API Error: ${error.message}. Using localStorage fallback.`, 'warning');
         
         // Fallback to localStorage
         const allUsersData = JSON.parse(localStorage.getItem('galaxyEarnAllUsers')) || {};
         const users = Object.values(allUsersData);
         const withdrawalRequests = JSON.parse(localStorage.getItem('galaxyEarnWithdrawalRequests')) || [];
         
-        console.log('Using localStorage fallback:', users.length);
+        console.log('Using localStorage fallback:', users.length, users);
         
         // Update dashboard stats
         updateDashboardStats(users, withdrawalRequests);
@@ -1636,6 +1647,8 @@
         // Update tables
         updateUsersTable(users);
         updateWithdrawalsTable(withdrawalRequests);
+        
+        showToast(`Loaded ${users.length} users from localStorage`, 'info');
       }
     }
     
