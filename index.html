@@ -1170,6 +1170,15 @@
       { id: 'wa_community', name: 'Youtube Community', link: " ", reward: 10, icon: 'fab fa-youtube' }
     ];
 
+    // API base configuration to work in Telegram (t.me) and locally
+    const STORED_API_BASE = localStorage.getItem('API_BASE') || '';
+    const DEFAULT_PROJECT_URL = '';
+    const SHOULD_USE_PROJECT_URL = location.host.endsWith('t.me') || location.protocol === 'file:';
+    const API_BASE = (SHOULD_USE_PROJECT_URL ? (STORED_API_BASE || DEFAULT_PROJECT_URL) : location.origin) || location.origin;
+    window.setApiBase = function(url){
+      try { localStorage.setItem('API_BASE', url); console.log('API_BASE set to', url); } catch(e) {}
+    };
+
     // DOM Elements
     const themeToggleBtn = document.getElementById('themeToggle');
     const profileNameDisplay = document.getElementById('profileNameDisplay');
@@ -1232,7 +1241,7 @@
     // Load all users from API
     async function loadAllUsersFromAPI() {
       try {
-        const response = await fetch('/api/get-users');
+        const response = await fetch(`${API_BASE}/api/get-users`);
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -1550,7 +1559,7 @@
       window.testAPIConnection = async function() {
         console.log('=== TESTING API CONNECTION ===');
         try {
-          const response = await fetch('/api/get-users');
+          const response = await fetch(`${API_BASE}/api/get-users`);
           console.log('API Response status:', response.status);
           const data = await response.json();
           console.log('API Response data:', data);
@@ -2301,13 +2310,14 @@ Referral From:
         userAgent: navigator.userAgent,
         isTelegram: window.Telegram?.WebApp ? 'Yes' : 'No',
         currentURL: window.location.href,
+        apiBase: API_BASE,
         deviceId: deviceId,
         currentUser: currentUser
       });
       
       try {
         console.log('Attempting to save to API...');
-        const apiUrl = '/api/save-user';
+        const apiUrl = `${API_BASE}/api/save-user`;
         console.log('API URL:', apiUrl);
         
         const response = await fetch(apiUrl, {
