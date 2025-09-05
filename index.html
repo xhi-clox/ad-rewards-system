@@ -1381,6 +1381,15 @@
       MIN_WITHDRAW_POINTS = settings.minWithdrawalPoints || 400;
       REFERRAL_BONUS_REFERRER = settings.referrerBonus || 10;
       REFERRAL_BONUS_REFEREE = settings.refereeBonus || 5;
+      
+      // Debug logging
+      console.log('Settings reloaded:', {
+        ADS_PER_DAY_LIMIT,
+        POINTS_PER_AD,
+        MIN_WITHDRAW_POINTS,
+        currentUser: currentUser
+      });
+      
       updateUI();
     }
 
@@ -1390,10 +1399,20 @@
         Telegram.WebApp.expand();
         Telegram.WebApp.enableClosingConfirmation();
       }
+      
+      // Initialize settings first
       initializeSettings();
+      
+      // Reload settings to ensure they're current
+      reloadSettings();
+      
+      // Load user state
       loadUserState();
+      
+      // Apply theme
       applyTheme(localStorage.getItem('galaxyEarnTheme') || 'dark');
 
+      // Navigate to home page
       navigateTo('home');
 
       themeToggleBtn.addEventListener('click', toggleTheme);
@@ -1431,6 +1450,37 @@
           updateUI();
         }
       }, 30000); // Check every 30 seconds
+      
+      // Add global refresh function for debugging
+      window.refreshApp = function() {
+        console.log('Manual refresh triggered');
+        reloadSettings();
+        loadUserState();
+        navigateTo('home');
+      };
+      
+      // Add function to reset user data if needed
+      window.resetUserData = function() {
+        console.log('Resetting user data');
+        const deviceId = localStorage.getItem('galaxyEarnDeviceId');
+        let allUsersData = JSON.parse(localStorage.getItem('galaxyEarnAllUsers')) || {};
+        allUsersData[deviceId] = {
+          name: 'Guest User',
+          telegramId: null,
+          photoUrl: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png',
+          points: 0,
+          adsWatchedToday: 0,
+          totalAdsWatchedLifetime: 0,
+          lastAdWatchDate: null,
+          claimedBonuses: [],
+          referralCode: generateReferralCode(),
+          referredBy: null,
+          referredUsers: []
+        };
+        localStorage.setItem('galaxyEarnAllUsers', JSON.stringify(allUsersData));
+        loadUserState();
+        navigateTo('home');
+      };
     });
 
     // Sidebar functions
@@ -1471,6 +1521,15 @@
       adsWatchedTodayEl.textContent = currentUser.adsWatchedToday;
       adsLeftTodayEl.textContent = ADS_PER_DAY_LIMIT - currentUser.adsWatchedToday;
       totalAdsWatchedEl.textContent = currentUser.totalAdsWatchedLifetime;
+      
+      // Debug logging for UI update
+      console.log('UI Updated:', {
+        points: currentUser.points,
+        adsWatchedToday: currentUser.adsWatchedToday,
+        adsLeftToday: ADS_PER_DAY_LIMIT - currentUser.adsWatchedToday,
+        totalAdsWatched: currentUser.totalAdsWatchedLifetime,
+        ADS_PER_DAY_LIMIT
+      });
 
       if (currentUser.photoUrl) {
         profileAvatar.src = currentUser.photoUrl;
@@ -1494,6 +1553,9 @@
 
     // Navigation function
     function navigateTo(page) {
+      // Reload settings to ensure they're current before rendering
+      reloadSettings();
+      
       // Update active nav item
       navItems.forEach(item => {
         item.classList.remove('active');
