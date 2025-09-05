@@ -1600,6 +1600,15 @@
     async function loadAdminData() {
       console.log('Loading admin data...');
       
+      // Check if we're running locally (no API available)
+      const isLocal = window.location.protocol === 'file:' || window.location.hostname === 'localhost';
+      
+      if (isLocal) {
+        console.log('Running locally - using localStorage and test data');
+        loadLocalData();
+        return;
+      }
+      
       try {
         // Load users data from API
         console.log('Fetching from /api/get-users...');
@@ -1630,25 +1639,199 @@
         
         showToast(`Loaded ${users.length} users from API`, 'success');
         
+        // If no users, show a message about how to create test data
+        if (users.length === 0) {
+          showToast('No users found. Use the main app or click "Create Test Data" to test.', 'info');
+        }
+        
       } catch (error) {
         console.error('Failed to load data from API:', error);
         showToast(`API Error: ${error.message}. Using localStorage fallback.`, 'warning');
         
         // Fallback to localStorage
-        const allUsersData = JSON.parse(localStorage.getItem('galaxyEarnAllUsers')) || {};
-        const users = Object.values(allUsersData);
+        loadLocalData();
+      }
+    }
+    
+    // Load data from localStorage (for local testing)
+    function loadLocalData() {
+      const allUsersData = JSON.parse(localStorage.getItem('galaxyEarnAllUsers')) || {};
+      const users = Object.values(allUsersData);
+      const withdrawalRequests = JSON.parse(localStorage.getItem('galaxyEarnWithdrawalRequests')) || [];
+      
+      console.log('Using localStorage fallback:', users.length, users);
+      
+      // If no data exists, create some test data
+      if (users.length === 0) {
+        console.log('No data found - creating test data');
+        createTestData();
+        // Reload after creating test data
+        setTimeout(() => loadLocalData(), 100);
+        return;
+      }
+      
+      // Update dashboard stats
+      updateDashboardStats(users, withdrawalRequests);
+      
+      // Update tables
+      updateUsersTable(users);
+      updateWithdrawalsTable(withdrawalRequests);
+      
+      showToast(`Loaded ${users.length} users from localStorage`, 'info');
+    }
+    
+    // Create test data for local testing
+    function createTestData() {
+      const testUsers = {
+        'test-device-1': {
+          telegramId: '123456789',
+          username: 'testuser1',
+          firstName: 'Test',
+          lastName: 'User 1',
+          points: 1500,
+          totalAdsWatchedLifetime: 15,
+          adsWatchedToday: 3,
+          referralCode: 'TEST001',
+          referredBy: null,
+          referrals: ['test-device-2'],
+          joinDate: new Date().toISOString(),
+          lastActive: new Date().toISOString(),
+          photoUrl: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png'
+        },
+        'test-device-2': {
+          telegramId: '987654321',
+          username: 'testuser2',
+          firstName: 'Test',
+          lastName: 'User 2',
+          points: 800,
+          totalAdsWatchedLifetime: 8,
+          adsWatchedToday: 2,
+          referralCode: 'TEST002',
+          referredBy: 'TEST001',
+          referrals: [],
+          joinDate: new Date().toISOString(),
+          lastActive: new Date().toISOString(),
+          photoUrl: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png'
+        }
+      };
+      
+      const testWithdrawals = [
+        {
+          id: 'withdrawal-1',
+          userId: '123456789',
+          username: 'testuser1',
+          amount: 1000,
+          status: 'pending',
+          requestDate: new Date().toISOString(),
+          method: 'USDT'
+        }
+      ];
+      
+      localStorage.setItem('galaxyEarnAllUsers', JSON.stringify(testUsers));
+      localStorage.setItem('galaxyEarnWithdrawalRequests', JSON.stringify(testWithdrawals));
+      
+      showToast('Test data created for local testing', 'success');
+    }
+    
+    // Create test data via API (for Vercel testing)
+    async function createTestDataViaAPI() {
+      try {
+        const testUsers = [
+          {
+            deviceId: 'test-device-1',
+            userData: {
+              telegramId: '123456789',
+              username: 'testuser1',
+              firstName: 'Test',
+              lastName: 'User 1',
+              points: 1500,
+              totalAdsWatchedLifetime: 15,
+              adsWatchedToday: 3,
+              referralCode: 'TEST001',
+              referredBy: null,
+              referrals: ['test-device-2'],
+              joinDate: new Date().toISOString(),
+              lastActive: new Date().toISOString(),
+              photoUrl: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png'
+            }
+          },
+          {
+            deviceId: 'test-device-2',
+            userData: {
+              telegramId: '987654321',
+              username: 'testuser2',
+              firstName: 'Test',
+              lastName: 'User 2',
+              points: 800,
+              totalAdsWatchedLifetime: 8,
+              adsWatchedToday: 2,
+              referralCode: 'TEST002',
+              referredBy: 'TEST001',
+              referrals: [],
+              joinDate: new Date().toISOString(),
+              lastActive: new Date().toISOString(),
+              photoUrl: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png'
+            }
+          }
+        ];
+        
+        // Save each test user via API
+        for (const testUser of testUsers) {
+          const response = await fetch('/api/save-user', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(testUser)
+          });
+          
+          if (!response.ok) {
+            throw new Error(`Failed to save user ${testUser.deviceId}`);
+          }
+          
+          const result = await response.json();
+          console.log('Test user saved:', result);
+        }
+        
+        // Create test withdrawal request
+        const testWithdrawal = {
+          id: 'withdrawal-1',
+          userId: '123456789',
+          username: 'testuser1',
+          amount: 1000,
+          status: 'pending',
+          requestDate: new Date().toISOString(),
+          method: 'USDT'
+        };
+        
         const withdrawalRequests = JSON.parse(localStorage.getItem('galaxyEarnWithdrawalRequests')) || [];
+        withdrawalRequests.push(testWithdrawal);
+        localStorage.setItem('galaxyEarnWithdrawalRequests', JSON.stringify(withdrawalRequests));
         
-        console.log('Using localStorage fallback:', users.length, users);
+        showToast('Test data created via API! Refreshing...', 'success');
         
-        // Update dashboard stats
-        updateDashboardStats(users, withdrawalRequests);
+        // Reload data after creating test data
+        setTimeout(() => loadAdminData(), 1000);
         
-        // Update tables
-        updateUsersTable(users);
-        updateWithdrawalsTable(withdrawalRequests);
+      } catch (error) {
+        console.error('Error creating test data via API:', error);
+        showToast(`Error creating test data: ${error.message}`, 'error');
+      }
+    }
+    
+    // Add test data button to the UI
+    function addTestDataButton() {
+      const refreshBtn = document.getElementById('refreshDataBtn');
+      if (refreshBtn && !document.getElementById('createTestDataBtn')) {
+        const testDataBtn = document.createElement('button');
+        testDataBtn.id = 'createTestDataBtn';
+        testDataBtn.className = 'btn btn-secondary';
+        testDataBtn.innerHTML = '<i class="fas fa-flask"></i> Create Test Data';
+        testDataBtn.style.marginLeft = '10px';
         
-        showToast(`Loaded ${users.length} users from localStorage`, 'info');
+        testDataBtn.addEventListener('click', createTestDataViaAPI);
+        
+        refreshBtn.parentNode.insertBefore(testDataBtn, refreshBtn.nextSibling);
       }
     }
     
@@ -2036,6 +2219,7 @@
       checkLoginStatus();
       applySavedTheme();
       checkScreenSize();
+      addTestDataButton();
       window.addEventListener('resize', checkScreenSize);
     }
 

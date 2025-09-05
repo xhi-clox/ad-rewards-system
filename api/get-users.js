@@ -1,43 +1,44 @@
 // Vercel Serverless Function for retrieving all users
-const fs = require('fs');
-const path = require('path');
+const storage = require('./storage');
 
 module.exports = async (req, res) => {
+  // Enable CORS
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  
   // Only allow GET requests
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    // Path to the JSON file
-    const filePath = path.join(process.cwd(), 'data', 'users.json');
+    console.log('GET /api/get-users called');
     
-    // Check if file exists
-    if (!fs.existsSync(filePath)) {
-      return res.status(200).json({ users: {} });
-    }
+    // Get all users from shared storage
+    const users = await storage.getAllUsers();
+    const stats = await storage.getStats();
 
-    // Read and parse the file
-    const fileContent = fs.readFileSync(filePath, 'utf8');
-    const allUsers = JSON.parse(fileContent);
-
-    // Add some metadata
     const response = {
-      users: allUsers,
-      totalUsers: Object.keys(allUsers).length,
-      lastUpdated: new Date().toISOString()
+      users: users,
+      totalUsers: stats.totalUsers,
+      lastUpdated: stats.lastUpdated,
+      message: 'Users retrieved successfully from memory storage'
     };
-
-    // Log the request
-    console.log(`Retrieved ${Object.keys(allUsers).length} users`);
 
     return res.status(200).json(response);
 
   } catch (error) {
-    console.error('Error reading users file:', error);
+    console.error('Error retrieving users:', error);
     return res.status(500).json({ 
       error: 'Internal server error',
-      details: error.message 
+      details: error.message,
+      stack: error.stack
     });
   }
 };
