@@ -3,18 +3,37 @@ const fs = require('fs');
 const path = require('path');
 
 module.exports = async (req, res) => {
+  // Enable CORS
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  
   // Only allow GET requests
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
+    console.log('GET /api/get-users called');
+    
     // Path to the JSON file
     const filePath = path.join(process.cwd(), 'data', 'users.json');
+    console.log('Looking for file at:', filePath);
     
     // Check if file exists
     if (!fs.existsSync(filePath)) {
-      return res.status(200).json({ users: {} });
+      console.log('File does not exist, returning empty users');
+      return res.status(200).json({ 
+        users: {},
+        totalUsers: 0,
+        lastUpdated: new Date().toISOString(),
+        message: 'No users file found'
+      });
     }
 
     // Read and parse the file
@@ -25,7 +44,8 @@ module.exports = async (req, res) => {
     const response = {
       users: allUsers,
       totalUsers: Object.keys(allUsers).length,
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
+      message: 'Users retrieved successfully'
     };
 
     // Log the request
@@ -37,7 +57,8 @@ module.exports = async (req, res) => {
     console.error('Error reading users file:', error);
     return res.status(500).json({ 
       error: 'Internal server error',
-      details: error.message 
+      details: error.message,
+      stack: error.stack
     });
   }
 };
