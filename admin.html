@@ -1598,17 +1598,34 @@
 
     // Load admin data from API
     async function loadAdminData() {
+      console.log('Loading admin data...');
+      
+      // Check if we're running locally (no API available)
+      const isLocal = window.location.protocol === 'file:' || window.location.hostname === 'localhost';
+      
+      if (isLocal) {
+        console.log('Running locally - using localStorage and test data');
+        loadLocalData();
+        return;
+      }
+      
       try {
         // Load users data from API
+        console.log('Fetching from /api/get-users...');
         const response = await fetch('/api/get-users');
+        console.log('API Response status:', response.status);
+        
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
+        
         const data = await response.json();
+        console.log('API Response data:', data);
+        
         const allUsersData = data.users || {};
         const users = Object.values(allUsersData);
         
-        console.log('Loaded users from API:', users.length);
+        console.log('Loaded users from API:', users.length, users);
         
         // Load withdrawal requests (still from localStorage for now)
         const withdrawalRequests = JSON.parse(localStorage.getItem('galaxyEarnWithdrawalRequests')) || [];
@@ -1620,23 +1637,95 @@
         updateUsersTable(users);
         updateWithdrawalsTable(withdrawalRequests);
         
+        showToast(`Loaded ${users.length} users from API`, 'success');
+        
       } catch (error) {
         console.error('Failed to load data from API:', error);
+        showToast(`API Error: ${error.message}. Using localStorage fallback.`, 'warning');
         
         // Fallback to localStorage
-        const allUsersData = JSON.parse(localStorage.getItem('galaxyEarnAllUsers')) || {};
-        const users = Object.values(allUsersData);
-        const withdrawalRequests = JSON.parse(localStorage.getItem('galaxyEarnWithdrawalRequests')) || [];
-        
-        console.log('Using localStorage fallback:', users.length);
-        
-        // Update dashboard stats
-        updateDashboardStats(users, withdrawalRequests);
-        
-        // Update tables
-        updateUsersTable(users);
-        updateWithdrawalsTable(withdrawalRequests);
+        loadLocalData();
       }
+    }
+    
+    // Load data from localStorage (for local testing)
+    function loadLocalData() {
+      const allUsersData = JSON.parse(localStorage.getItem('galaxyEarnAllUsers')) || {};
+      const users = Object.values(allUsersData);
+      const withdrawalRequests = JSON.parse(localStorage.getItem('galaxyEarnWithdrawalRequests')) || [];
+      
+      console.log('Using localStorage fallback:', users.length, users);
+      
+      // If no data exists, create some test data
+      if (users.length === 0) {
+        console.log('No data found - creating test data');
+        createTestData();
+        // Reload after creating test data
+        setTimeout(() => loadLocalData(), 100);
+        return;
+      }
+      
+      // Update dashboard stats
+      updateDashboardStats(users, withdrawalRequests);
+      
+      // Update tables
+      updateUsersTable(users);
+      updateWithdrawalsTable(withdrawalRequests);
+      
+      showToast(`Loaded ${users.length} users from localStorage`, 'info');
+    }
+    
+    // Create test data for local testing
+    function createTestData() {
+      const testUsers = {
+        'test-device-1': {
+          telegramId: '123456789',
+          username: 'testuser1',
+          firstName: 'Test',
+          lastName: 'User 1',
+          points: 1500,
+          totalAdsWatchedLifetime: 15,
+          adsWatchedToday: 3,
+          referralCode: 'TEST001',
+          referredBy: null,
+          referrals: ['test-device-2'],
+          joinDate: new Date().toISOString(),
+          lastActive: new Date().toISOString(),
+          photoUrl: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png'
+        },
+        'test-device-2': {
+          telegramId: '987654321',
+          username: 'testuser2',
+          firstName: 'Test',
+          lastName: 'User 2',
+          points: 800,
+          totalAdsWatchedLifetime: 8,
+          adsWatchedToday: 2,
+          referralCode: 'TEST002',
+          referredBy: 'TEST001',
+          referrals: [],
+          joinDate: new Date().toISOString(),
+          lastActive: new Date().toISOString(),
+          photoUrl: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png'
+        }
+      };
+      
+      const testWithdrawals = [
+        {
+          id: 'withdrawal-1',
+          userId: '123456789',
+          username: 'testuser1',
+          amount: 1000,
+          status: 'pending',
+          requestDate: new Date().toISOString(),
+          method: 'USDT'
+        }
+      ];
+      
+      localStorage.setItem('galaxyEarnAllUsers', JSON.stringify(testUsers));
+      localStorage.setItem('galaxyEarnWithdrawalRequests', JSON.stringify(testWithdrawals));
+      
+      showToast('Test data created for local testing', 'success');
     }
     
     // Update dashboard stats
