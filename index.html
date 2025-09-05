@@ -1148,12 +1148,13 @@
       refereeBonus: 5
     };
     
-    const settings = JSON.parse(localStorage.getItem('galaxyEarnSettings')) || defaultSettings;
-    const ADS_PER_DAY_LIMIT = settings.dailyAdLimit || 5000;
-    const POINTS_PER_AD = settings.pointsPerAd || 5;
-    const MIN_WITHDRAW_POINTS = settings.minWithdrawalPoints || 400;
-    const REFERRAL_BONUS_REFERRER = settings.referrerBonus || 10;
-    const REFERRAL_BONUS_REFEREE = settings.refereeBonus || 5;
+    // Make these variables dynamic so they can be updated
+    let settings = JSON.parse(localStorage.getItem('galaxyEarnSettings')) || defaultSettings;
+    let ADS_PER_DAY_LIMIT = settings.dailyAdLimit || 5000;
+    let POINTS_PER_AD = settings.pointsPerAd || 5;
+    let MIN_WITHDRAW_POINTS = settings.minWithdrawalPoints || 400;
+    let REFERRAL_BONUS_REFERRER = settings.referrerBonus || 10;
+    let REFERRAL_BONUS_REFEREE = settings.refereeBonus || 5;
     const MONETAG_AD_FUNCTION_NAME = 'show_9818146';
     const TELEGRAM_BOT_TOKEN = "7525170440:AAFF9DO5-OEAdwlo5nrLcM0XFc16Juuh-qw";
     const TELEGRAM_CHAT_ID = "8314434724";
@@ -1311,7 +1312,16 @@
         }
       }
 
-      updateUI();
+      // Check for daily reset
+      const today = new Date().toLocaleDateString();
+      if (currentUser.lastAdWatchDate !== today) {
+        currentUser.adsWatchedToday = 0;
+        currentUser.lastAdWatchDate = today;
+        saveUserState();
+      }
+
+      // Reload settings to ensure they're up to date
+      reloadSettings();
     }
 
     // Apply referral code
@@ -1364,13 +1374,13 @@
 
     // Reload settings from localStorage
     function reloadSettings() {
-      const newSettings = JSON.parse(localStorage.getItem('galaxyEarnSettings')) || defaultSettings;
+      settings = JSON.parse(localStorage.getItem('galaxyEarnSettings')) || defaultSettings;
       // Update global variables
-      window.ADS_PER_DAY_LIMIT = newSettings.dailyAdLimit || 5000;
-      window.POINTS_PER_AD = newSettings.pointsPerAd || 5;
-      window.MIN_WITHDRAW_POINTS = newSettings.minWithdrawalPoints || 400;
-      window.REFERRAL_BONUS_REFERRER = newSettings.referrerBonus || 10;
-      window.REFERRAL_BONUS_REFEREE = newSettings.refereeBonus || 5;
+      ADS_PER_DAY_LIMIT = settings.dailyAdLimit || 5000;
+      POINTS_PER_AD = settings.pointsPerAd || 5;
+      MIN_WITHDRAW_POINTS = settings.minWithdrawalPoints || 400;
+      REFERRAL_BONUS_REFERRER = settings.referrerBonus || 10;
+      REFERRAL_BONUS_REFEREE = settings.refereeBonus || 5;
       updateUI();
     }
 
@@ -1410,6 +1420,17 @@
           reloadSettings();
         }
       });
+
+      // Periodic UI update to ensure stats stay current
+      setInterval(() => {
+        const today = new Date().toLocaleDateString();
+        if (currentUser.lastAdWatchDate !== today) {
+          currentUser.adsWatchedToday = 0;
+          currentUser.lastAdWatchDate = today;
+          saveUserState();
+          updateUI();
+        }
+      }, 30000); // Check every 30 seconds
     });
 
     // Sidebar functions
